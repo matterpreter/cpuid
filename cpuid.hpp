@@ -37,8 +37,9 @@ class HypervisorInfo
 		}
 	}
 
-	void GetMaxLeafAndVendorID(int* maxLeaf, char* vendorID) {
+	void GetMaxLeafAndVendorID(int& maxLeaf, std::string& vendorID) {
 		Registers registers;
+		char buffer[12] = { 0 };
 
 		try {
 			registers = QueryCPUIDLeaf(0x40000000);
@@ -48,20 +49,24 @@ class HypervisorInfo
 			return;
 		}
 
-		*maxLeaf = registers.eax;
-		memcpy(vendorID, &registers.ebx, 4);
-		memcpy(vendorID + 4, &registers.ecx, 4);
-		memcpy(vendorID + 8, &registers.edx, 4);
-		vendorID[12] = '\0';
+		maxLeaf = registers.eax;
+		memcpy(buffer, &registers.ebx, 4);
+		memcpy(buffer + 4, &registers.ecx, 4);
+		memcpy(buffer + 8, &registers.edx, 4);
+
+		vendorID.assign(buffer, sizeof(buffer));
 	}
 
-	void GetInterfaceID(char* interfaceID) {
+	void GetInterfaceID(std::string& interfaceID) {
 		Registers registers;
+		char buffer[4] = { 0 };
 
 		try {
 			registers = QueryCPUIDLeaf(0x40000001);
-			memcpy(interfaceID, &registers.eax, 4);
-			interfaceID[4] = '\0';
+			memcpy(buffer, &registers.eax, 4);
+			//buffer[4] = '\0';
+
+			interfaceID.assign(buffer, sizeof(buffer));
 		}
 		catch (const std::runtime_error& e) {
 			std::cout << e.what() << std::endl;
@@ -76,19 +81,19 @@ class HypervisorInfo
 		std::string BuildString;
 	};
 
-	void GetBuildInfo(BuildInfo* buildInfo) {
+	void GetBuildInfo(BuildInfo& buildInfo) {
 		Registers registers;
 
 		try {
 			registers = QueryCPUIDLeaf(0x40000002);
 
-			buildInfo->BuildNumber = registers.eax;
-			buildInfo->MajorVersion = registers.ebx >> 16;
-			buildInfo->MinorVersion = registers.ebx & 0xFFFF;
-			buildInfo->BuildString =
-				std::to_string(buildInfo->MajorVersion) + "." +
-				std::to_string(buildInfo->MinorVersion) + "." +
-				std::to_string(buildInfo->BuildNumber);
+			buildInfo.BuildNumber = registers.eax;
+			buildInfo.MajorVersion = registers.ebx >> 16;
+			buildInfo.MinorVersion = registers.ebx & 0xFFFF;
+			buildInfo.BuildString =
+				std::to_string(buildInfo.MajorVersion) + "." +
+				std::to_string(buildInfo.MinorVersion) + "." +
+				std::to_string(buildInfo.BuildNumber);
 		}
 		catch (const std::runtime_error& e) {
 			std::cout << e.what() << std::endl;
@@ -157,7 +162,7 @@ class HypervisorInfo
 		bool IntelLBR = false;
 	};
 
-	void GetHypervisorFeatures(HypervisorFeaturesEnabled* hvFeatures) {
+	void GetHypervisorFeatures(HypervisorFeaturesEnabled& hvFeatures) {
 		Registers registers;
 
 		try {
@@ -169,66 +174,66 @@ class HypervisorInfo
 		}
 
 		std::bitset<32> hvPartitionPrivilegeMaskLow(registers.eax);
-		hvFeatures->AccessVpRunTimeReg = hvPartitionPrivilegeMaskLow[0];
-		hvFeatures->AccessPartitionReferenceCounter = hvPartitionPrivilegeMaskLow[1];
-		hvFeatures->AccessSynicRegs = hvPartitionPrivilegeMaskLow[2];
-		hvFeatures->AccessSyntheticTimerRegs = hvPartitionPrivilegeMaskLow[3];
-		hvFeatures->AccessIntrCtrlRegs = hvPartitionPrivilegeMaskLow[4];
-		hvFeatures->AccessHypercallMsrs = hvPartitionPrivilegeMaskLow[5];
-		hvFeatures->AccessVpIndex = hvPartitionPrivilegeMaskLow[6];
-		hvFeatures->AccessResetReg = hvPartitionPrivilegeMaskLow[7];
-		hvFeatures->AccessStatsReg = hvPartitionPrivilegeMaskLow[8];
-		hvFeatures->AccessPartitionReferenceTsc = hvPartitionPrivilegeMaskLow[9];
-		hvFeatures->AccessGuestIdleReg = hvPartitionPrivilegeMaskLow[10];
-		hvFeatures->AccessFrequencyRegs = hvPartitionPrivilegeMaskLow[11];
-		hvFeatures->AccessDebugRegs = hvPartitionPrivilegeMaskLow[12];
-		hvFeatures->AccessReenlightenmentControls = hvPartitionPrivilegeMaskLow[13];
+		hvFeatures.AccessVpRunTimeReg = hvPartitionPrivilegeMaskLow[0];
+		hvFeatures.AccessPartitionReferenceCounter = hvPartitionPrivilegeMaskLow[1];
+		hvFeatures.AccessSynicRegs = hvPartitionPrivilegeMaskLow[2];
+		hvFeatures.AccessSyntheticTimerRegs = hvPartitionPrivilegeMaskLow[3];
+		hvFeatures.AccessIntrCtrlRegs = hvPartitionPrivilegeMaskLow[4];
+		hvFeatures.AccessHypercallMsrs = hvPartitionPrivilegeMaskLow[5];
+		hvFeatures.AccessVpIndex = hvPartitionPrivilegeMaskLow[6];
+		hvFeatures.AccessResetReg = hvPartitionPrivilegeMaskLow[7];
+		hvFeatures.AccessStatsReg = hvPartitionPrivilegeMaskLow[8];
+		hvFeatures.AccessPartitionReferenceTsc = hvPartitionPrivilegeMaskLow[9];
+		hvFeatures.AccessGuestIdleReg = hvPartitionPrivilegeMaskLow[10];
+		hvFeatures.AccessFrequencyRegs = hvPartitionPrivilegeMaskLow[11];
+		hvFeatures.AccessDebugRegs = hvPartitionPrivilegeMaskLow[12];
+		hvFeatures.AccessReenlightenmentControls = hvPartitionPrivilegeMaskLow[13];
 
 		std::bitset<32> hvPartitionPrivilegeMaskHigh(registers.ebx);
-		hvFeatures->CreatePartitions = hvPartitionPrivilegeMaskHigh[0];
-		hvFeatures->AccessPartitionId = hvPartitionPrivilegeMaskHigh[1];
-		hvFeatures->AccessMemoryPool = hvPartitionPrivilegeMaskHigh[2];
-		hvFeatures->PostMessages = hvPartitionPrivilegeMaskHigh[4];
-		hvFeatures->SignalEvents = hvPartitionPrivilegeMaskHigh[5];
-		hvFeatures->CreatePort = hvPartitionPrivilegeMaskHigh[6];
-		hvFeatures->ConnectPort = hvPartitionPrivilegeMaskHigh[7];
-		hvFeatures->AccessStats = hvPartitionPrivilegeMaskHigh[8];
-		hvFeatures->Debugging = hvPartitionPrivilegeMaskHigh[11];
-		hvFeatures->CpuManagement = hvPartitionPrivilegeMaskHigh[12];
-		hvFeatures->AccessVSM = hvPartitionPrivilegeMaskHigh[16];
-		hvFeatures->AccessVpRegisters = hvPartitionPrivilegeMaskHigh[17];
-		hvFeatures->EnableExtendedHypercalls = hvPartitionPrivilegeMaskHigh[20];
-		hvFeatures->StartVirtualProcessor = hvPartitionPrivilegeMaskHigh[21];
+		hvFeatures.CreatePartitions = hvPartitionPrivilegeMaskHigh[0];
+		hvFeatures.AccessPartitionId = hvPartitionPrivilegeMaskHigh[1];
+		hvFeatures.AccessMemoryPool = hvPartitionPrivilegeMaskHigh[2];
+		hvFeatures.PostMessages = hvPartitionPrivilegeMaskHigh[4];
+		hvFeatures.SignalEvents = hvPartitionPrivilegeMaskHigh[5];
+		hvFeatures.CreatePort = hvPartitionPrivilegeMaskHigh[6];
+		hvFeatures.ConnectPort = hvPartitionPrivilegeMaskHigh[7];
+		hvFeatures.AccessStats = hvPartitionPrivilegeMaskHigh[8];
+		hvFeatures.Debugging = hvPartitionPrivilegeMaskHigh[11];
+		hvFeatures.CpuManagement = hvPartitionPrivilegeMaskHigh[12];
+		hvFeatures.AccessVSM = hvPartitionPrivilegeMaskHigh[16];
+		hvFeatures.AccessVpRegisters = hvPartitionPrivilegeMaskHigh[17];
+		hvFeatures.EnableExtendedHypercalls = hvPartitionPrivilegeMaskHigh[20];
+		hvFeatures.StartVirtualProcessor = hvPartitionPrivilegeMaskHigh[21];
 
 		std::bitset<32> hvFeaturesECX(registers.ecx);
-		hvFeatures->InvarientMperf = hvFeaturesECX[5];
-		hvFeatures->SupervisorShadowStack = hvFeaturesECX[6];
-		hvFeatures->ArchitecturalPMU = hvFeaturesECX[7];
-		hvFeatures->ExceptionTrapIntercept = hvFeaturesECX[8];
+		hvFeatures.InvarientMperf = hvFeaturesECX[5];
+		hvFeatures.SupervisorShadowStack = hvFeaturesECX[6];
+		hvFeatures.ArchitecturalPMU = hvFeaturesECX[7];
+		hvFeatures.ExceptionTrapIntercept = hvFeaturesECX[8];
 
 		std::bitset<32> hvFeaturesEDX(registers.edx);
-		hvFeatures->GuestDebugging = hvFeaturesEDX[1];
-		hvFeatures->PerformanceMonitorSupport = hvFeaturesEDX[2];
-		hvFeatures->PhysicalCPUDynamicPartitioningEvents = hvFeaturesEDX[3];
-		hvFeatures->HypercallInputParametersXMM = hvFeaturesEDX[4];
-		hvFeatures->VirtualGuestIdleState = hvFeaturesEDX[5];
-		hvFeatures->HypervisorSleepState = hvFeaturesEDX[6];
-		hvFeatures->NumaDistanceQuery = hvFeaturesEDX[7];
-		hvFeatures->TimerFrequencies = hvFeaturesEDX[8];
-		hvFeatures->SyntheticMachineCheck = hvFeaturesEDX[9];
-		hvFeatures->GuestCrashMSR = hvFeaturesEDX[10];
-		hvFeatures->DebugMSR = hvFeaturesEDX[11];
-		hvFeatures->NPIEP = hvFeaturesEDX[12];
-		hvFeatures->DisableHypervisor = hvFeaturesEDX[13];
-		hvFeatures->ExtendedGvaRangesForFlushVirtualAddressList = hvFeaturesEDX[14];
-		hvFeatures->HypercallOutputParametersXMM = hvFeaturesEDX[15];
-		hvFeatures->SintPollingMode = hvFeaturesEDX[17];
-		hvFeatures->HypercallMsrLock = hvFeaturesEDX[18];
-		hvFeatures->DirectSyntheticTimers = hvFeaturesEDX[19];
-		hvFeatures->PATRegister = hvFeaturesEDX[20];
-		hvFeatures->BNDCFGSRegister = hvFeaturesEDX[21];
-		hvFeatures->SyntheticTimeUnhaltedTimer = hvFeaturesEDX[23];
-		hvFeatures->IntelLBR = hvFeaturesEDX[26];
+		hvFeatures.GuestDebugging = hvFeaturesEDX[1];
+		hvFeatures.PerformanceMonitorSupport = hvFeaturesEDX[2];
+		hvFeatures.PhysicalCPUDynamicPartitioningEvents = hvFeaturesEDX[3];
+		hvFeatures.HypercallInputParametersXMM = hvFeaturesEDX[4];
+		hvFeatures.VirtualGuestIdleState = hvFeaturesEDX[5];
+		hvFeatures.HypervisorSleepState = hvFeaturesEDX[6];
+		hvFeatures.NumaDistanceQuery = hvFeaturesEDX[7];
+		hvFeatures.TimerFrequencies = hvFeaturesEDX[8];
+		hvFeatures.SyntheticMachineCheck = hvFeaturesEDX[9];
+		hvFeatures.GuestCrashMSR = hvFeaturesEDX[10];
+		hvFeatures.DebugMSR = hvFeaturesEDX[11];
+		hvFeatures.NPIEP = hvFeaturesEDX[12];
+		hvFeatures.DisableHypervisor = hvFeaturesEDX[13];
+		hvFeatures.ExtendedGvaRangesForFlushVirtualAddressList = hvFeaturesEDX[14];
+		hvFeatures.HypercallOutputParametersXMM = hvFeaturesEDX[15];
+		hvFeatures.SintPollingMode = hvFeaturesEDX[17];
+		hvFeatures.HypercallMsrLock = hvFeaturesEDX[18];
+		hvFeatures.DirectSyntheticTimers = hvFeaturesEDX[19];
+		hvFeatures.PATRegister = hvFeaturesEDX[20];
+		hvFeatures.BNDCFGSRegister = hvFeaturesEDX[21];
+		hvFeatures.SyntheticTimeUnhaltedTimer = hvFeaturesEDX[23];
+		hvFeatures.IntelLBR = hvFeaturesEDX[26];
 	}
 
 	struct HardwareFeatures {
@@ -255,7 +260,7 @@ class HypervisorInfo
 		bool ACPIWDAT = false;
 	};
 
-	void GetHardwareFeatures(HardwareFeatures* hwFeatures) {
+	void GetHardwareFeatures(HardwareFeatures& hwFeatures) {
 		Registers registers;
 		try {
 			registers = QueryCPUIDLeaf(0x40000006);
@@ -266,27 +271,27 @@ class HypervisorInfo
 		}
 		
 		std::bitset<32> hwFeaturesEAX(registers.eax);
-		hwFeatures->APICOverlayAssist = hwFeaturesEAX[0];
-		hwFeatures->MSRBitmaps = hwFeaturesEAX[1];
-		hwFeatures->ArchitecturalPerformanceCounters = hwFeaturesEAX[2];
-		hwFeatures->SLAT = hwFeaturesEAX[3];
-		hwFeatures->DMARemapping = hwFeaturesEAX[4];
-		hwFeatures->InterruptRemapping = hwFeaturesEAX[5];
-		hwFeatures->MemoryPatrolScrubber = hwFeaturesEAX[6];
-		hwFeatures->DMAProtection = hwFeaturesEAX[7];
-		hwFeatures->HPET = hwFeaturesEAX[8];
-		hwFeatures->VolatileSyntheticTimers = hwFeaturesEAX[9];
-		hwFeatures->HypervisorLevel = (hwFeaturesEAX.to_ulong() >> 10) & 0x0F;
-		hwFeatures->PhysicalDestinationMode = hwFeaturesEAX[14];
-		hwFeatures->HardwareMemoryZeroing = hwFeaturesEAX[16];
-		hwFeatures->UnrestrictedGuest = hwFeaturesEAX[17];
-		hwFeatures->ResourceAllocation = hwFeaturesEAX[18];
-		hwFeatures->ResourceMonitoring = hwFeaturesEAX[19];
-		hwFeatures->GuestVirtualPMU = hwFeaturesEAX[20];
-		hwFeatures->GuestVirtualLBR = hwFeaturesEAX[21];
-		hwFeatures->GuestVirtualIPT = hwFeaturesEAX[22];
-		hwFeatures->APICEmulation = hwFeaturesEAX[23];
-		hwFeatures->ACPIWDAT = hwFeaturesEAX[24];
+		hwFeatures.APICOverlayAssist = hwFeaturesEAX[0];
+		hwFeatures.MSRBitmaps = hwFeaturesEAX[1];
+		hwFeatures.ArchitecturalPerformanceCounters = hwFeaturesEAX[2];
+		hwFeatures.SLAT = hwFeaturesEAX[3];
+		hwFeatures.DMARemapping = hwFeaturesEAX[4];
+		hwFeatures.InterruptRemapping = hwFeaturesEAX[5];
+		hwFeatures.MemoryPatrolScrubber = hwFeaturesEAX[6];
+		hwFeatures.DMAProtection = hwFeaturesEAX[7];
+		hwFeatures.HPET = hwFeaturesEAX[8];
+		hwFeatures.VolatileSyntheticTimers = hwFeaturesEAX[9];
+		hwFeatures.HypervisorLevel = (hwFeaturesEAX.to_ulong() >> 10) & 0x0F;
+		hwFeatures.PhysicalDestinationMode = hwFeaturesEAX[14];
+		hwFeatures.HardwareMemoryZeroing = hwFeaturesEAX[16];
+		hwFeatures.UnrestrictedGuest = hwFeaturesEAX[17];
+		hwFeatures.ResourceAllocation = hwFeaturesEAX[18];
+		hwFeatures.ResourceMonitoring = hwFeaturesEAX[19];
+		hwFeatures.GuestVirtualPMU = hwFeaturesEAX[20];
+		hwFeatures.GuestVirtualLBR = hwFeaturesEAX[21];
+		hwFeatures.GuestVirtualIPT = hwFeaturesEAX[22];
+		hwFeatures.APICEmulation = hwFeaturesEAX[23];
+		hwFeatures.ACPIWDAT = hwFeaturesEAX[24];
 	}
 
 	struct EnlightenmentInfo {
@@ -314,7 +319,7 @@ class HypervisorInfo
 
 	};
 
-	void GetEnlightenmentInformation(EnlightenmentInfo* enlightenmentInfo) {
+	void GetEnlightenmentInformation(EnlightenmentInfo& enlightenmentInfo) {
 		Registers registers;
 		
 		try {
@@ -326,28 +331,28 @@ class HypervisorInfo
 		}
 
 		std::bitset<32> enlightenmentInfoEAX(registers.eax);
-		enlightenmentInfo->HypercallForAddressSpaceSwitches = enlightenmentInfoEAX[0];
-		enlightenmentInfo->HypercallForLocalTLBFlush = enlightenmentInfoEAX[1];
-		enlightenmentInfo->HypercallForRemoteTLBFlush = enlightenmentInfoEAX[2];
-		enlightenmentInfo->MSRForAPICAccess = enlightenmentInfoEAX[3];
-		enlightenmentInfo->MSRForSystemReset = enlightenmentInfoEAX[4];
-		enlightenmentInfo->UseRelaxedTiming = enlightenmentInfoEAX[5];
-		enlightenmentInfo->UseDMARemapping = enlightenmentInfoEAX[6];
-		enlightenmentInfo->UseInterruptRemapping = enlightenmentInfoEAX[7];
-		enlightenmentInfo->DeprecateAutoEOI = enlightenmentInfoEAX[9];
-		enlightenmentInfo->UseSyntheticClusterIPI = enlightenmentInfoEAX[10];
-		enlightenmentInfo->UseExProcessorMasks = enlightenmentInfoEAX[11];
-		enlightenmentInfo->HypervisorIsNested = enlightenmentInfoEAX[12];
-		enlightenmentInfo->UseIntForMBEC = enlightenmentInfoEAX[13];
-		enlightenmentInfo->UseEnlightenedVMCS = enlightenmentInfoEAX[14];
-		enlightenmentInfo->UseSyncedTimeline = enlightenmentInfoEAX[15];
-		enlightenmentInfo->UseDirectLocalFlushEntire = enlightenmentInfoEAX[17];
-		enlightenmentInfo->NoNonArchitecturalCoreSharing = enlightenmentInfoEAX[18];
+		enlightenmentInfo.HypercallForAddressSpaceSwitches = enlightenmentInfoEAX[0];
+		enlightenmentInfo.HypercallForLocalTLBFlush = enlightenmentInfoEAX[1];
+		enlightenmentInfo.HypercallForRemoteTLBFlush = enlightenmentInfoEAX[2];
+		enlightenmentInfo.MSRForAPICAccess = enlightenmentInfoEAX[3];
+		enlightenmentInfo.MSRForSystemReset = enlightenmentInfoEAX[4];
+		enlightenmentInfo.UseRelaxedTiming = enlightenmentInfoEAX[5];
+		enlightenmentInfo.UseDMARemapping = enlightenmentInfoEAX[6];
+		enlightenmentInfo.UseInterruptRemapping = enlightenmentInfoEAX[7];
+		enlightenmentInfo.DeprecateAutoEOI = enlightenmentInfoEAX[9];
+		enlightenmentInfo.UseSyntheticClusterIPI = enlightenmentInfoEAX[10];
+		enlightenmentInfo.UseExProcessorMasks = enlightenmentInfoEAX[11];
+		enlightenmentInfo.HypervisorIsNested = enlightenmentInfoEAX[12];
+		enlightenmentInfo.UseIntForMBEC = enlightenmentInfoEAX[13];
+		enlightenmentInfo.UseEnlightenedVMCS = enlightenmentInfoEAX[14];
+		enlightenmentInfo.UseSyncedTimeline = enlightenmentInfoEAX[15];
+		enlightenmentInfo.UseDirectLocalFlushEntire = enlightenmentInfoEAX[17];
+		enlightenmentInfo.NoNonArchitecturalCoreSharing = enlightenmentInfoEAX[18];
 
-		enlightenmentInfo->MaxSpinlockRetries = registers.ebx;
+		enlightenmentInfo.MaxSpinlockRetries = registers.ebx;
 
 		std::bitset<32> enlightenmentInfoECX(registers.ecx);
-		enlightenmentInfo->ImplementedPhysicalAddressBits = enlightenmentInfoECX.to_ulong() & 0x7F;
+		enlightenmentInfo.ImplementedPhysicalAddressBits = enlightenmentInfoECX.to_ulong() & 0x7F;
 	}
 
 	struct ImplementationLimits {
@@ -356,7 +361,7 @@ class HypervisorInfo
 		unsigned int MaxPhysicalInterruptVectors = 0;
 	};
 
-	void GetImplementationLimits(ImplementationLimits* implementationLimits) {
+	void GetImplementationLimits(ImplementationLimits& implementationLimits) {
 		Registers registers;
 		try {
 			registers = QueryCPUIDLeaf(0x40000005);
@@ -366,16 +371,16 @@ class HypervisorInfo
 			return;
 		}
 
-		implementationLimits->MaxVirtualProcessors = registers.eax;
-		implementationLimits->MaxLogicalProcessors = registers.ebx;
-		implementationLimits->MaxPhysicalInterruptVectors = registers.ecx;
+		implementationLimits.MaxVirtualProcessors = registers.eax;
+		implementationLimits.MaxLogicalProcessors = registers.ebx;
+		implementationLimits.MaxPhysicalInterruptVectors = registers.ecx;
 	}
 
 public:
 	bool m_IsHypervisorPresent = false;
 	int m_MaxLeaf = INT_MAX;
-	char m_VendorID[13] = { 0 };
-	char m_InterfaceID[5] = { 0 };
+	std::string m_VendorID;
+	std::string m_InterfaceID;
 	bool m_IsMicrosoftHypervisor = false;
 	BuildInfo m_BuildInfo;
 	HypervisorFeaturesEnabled m_HypervisorFeaturesEnabled;
@@ -392,12 +397,12 @@ public:
 		}
 
 		// HviGetHypervisorVendorAndMaxFunction
-		GetMaxLeafAndVendorID(&this->m_MaxLeaf, this->m_VendorID);
+		GetMaxLeafAndVendorID(this->m_MaxLeaf, this->m_VendorID);
 		
 		try {
 			// HviGetHypervisorInterface
 			GetInterfaceID(this->m_InterfaceID);
-			if (strcmp(this->m_InterfaceID, "Hv#1") == 0) {
+			if (this->m_InterfaceID == "Hv#1") {
 				this->m_IsMicrosoftHypervisor = true;
 			}
 			else {
@@ -409,19 +414,19 @@ public:
 			}
 
 			// HviGetHypervisorVersion
-			GetBuildInfo(&this->m_BuildInfo);
+			GetBuildInfo(this->m_BuildInfo);
 
 			// HviGetHypervisorFeatures
-			GetHypervisorFeatures(&this->m_HypervisorFeaturesEnabled);
+			GetHypervisorFeatures(this->m_HypervisorFeaturesEnabled);
 
 			// HviGetHardwareFeatures
-			GetHardwareFeatures(&this->m_HardwareFeatures);
+			GetHardwareFeatures(this->m_HardwareFeatures);
 
 			// HviGetEnlightenmentInformation
-			GetEnlightenmentInformation(&this->m_EnlightenmentInfo);
+			GetEnlightenmentInformation(this->m_EnlightenmentInfo);
 
 			// HviGetImplementationLimits
-			GetImplementationLimits(&this->m_ImplementationLimits);
+			GetImplementationLimits(this->m_ImplementationLimits);
 		}
 		catch (const std::runtime_error& e) {
 			std::cout << e.what() << std::endl;
